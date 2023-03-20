@@ -2,19 +2,8 @@
 const http = require('http'); // (1)
 const server = http.createServer();
 
-// GET /users 핸들러 함수
-const getUserHandler1 = function (request, response) {
-  if (request.method === "GET" && request.url === "/users") {
-    response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ users: users }));
-  }
-};
-const getUserHandler2 = function (request, response) {
-  if (request.method === "GET" && request.url === "/posts") {
-    response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ posts: posts }));
-  }
-};
+
+
 
 //데이터베이스 역할을 하는 곳 
 const users = [ // 회원가입 할 유저들 로그인 
@@ -110,14 +99,13 @@ const httpRequestListener = function (request, response) {
 };
 
 server.on("request", function (request, response) {
-  //getUserHandler1(request, response);
-  getUserHandler2(request, response);    //질문거리 왜 여기서는 handler 함수를 두번 쓰면 작동을 안할까? 핸들러 함수를 복합하여 중복을 최소화 
   httpRequestListener(request, response);
 });
 
 server.listen(8000, '127.0.0.1', function () {  //8000 포트 요구 항상 대기중.....
   console.log('Listening to requests on port 8000');
 });
+
 
 
 
