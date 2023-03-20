@@ -19,7 +19,7 @@ const users = [ // 회원가입 할 유저들 로그인
     },
 ]
 
-const posts = [ //view object이니 데이터베이스에 저장 할 필요 없는 contents
+let posts = [ //view object이니 데이터베이스에 저장 할 필요 없는 contents posts[i].id
     {
         id: 1,
         title: "간단한 HTTP API 개발 시작!",
@@ -33,9 +33,6 @@ const posts = [ //view object이니 데이터베이스에 저장 할 필요 없�
         userId: 2,
     },
 ] //유저에 대한 접근은 하나만 되어야함, userId === userId 유저마다 각각 컨
-
-//posts[i].title , posts[i].description
-
 
 
 const httpRequestListener = function (request, response) {
@@ -87,7 +84,7 @@ const httpRequestListener = function (request, response) {
             console.log("==========================")
             response.end(JSON.stringify({ contents: contents }));
 
-        } 
+        }
 
     } else if (method === 'POST') { // (3)
         if (url === '/users') {
@@ -182,15 +179,64 @@ const httpRequestListener = function (request, response) {
                     response.end(JSON.stringify({ data: result_object }));
                 } else {
                     response.writeHead(401, { 'Content-Type': 'application/json' }); //유저 아이디와 비밀번호가 일치하지 않는 경우 
+                    //401은 서버가 클라이언트 요청에 대한 인증을 거부했음을 나타내는 HTTP 상태 코드 중 하나입니다. 보통 사용자가 로그인하지 않은 경우나 인증 정보가 잘못된 경우에 사용됩니다.
                     response.end(JSON.stringify({ message: 'failed' }));
                 }
             });
 
         }
-    }
+    } else if (method === 'DELETE') {
+        /*
+        if (url.indexOf('/posts') === 0) { // /posts로 url이 시작 되는 경우  
+            const postId = parseInt(url.split("/")[2]);  //http://127.0.0.1:8000/posts/postId postId 값을 저장
+            const post = posts.find((post) => post.id === postId);
 
 
+            if (!post) { // 
+                response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+                response.end(JSON.stringify({ message: 'delete failed' }));
+            } else {    // post 삭제 
+                posts = posts.filter((post) => post.id !== postId); //저장을 해야 기존 배열에서 해당 요소를 삭제한 배열이 됨 posts 배열을 const가 아니라 let으로 바꿨습니다
+
+                response.writeHead(200, { "Content-Type": "application/json" }); //204는 HTTP 상태 코드 중 "No Content"를 의미함. 요청이 성공적으로 수행되었지만, 반환할 컨텐츠가 없다는 뜻, 즉 메세지도 안보내짐
+                //이 경우는 메세지를 보내야 하니 http 상태 코드를 200으로 해야함 
+                response.end(JSON.stringify({ message: "posting deleted" }));
+            }
+        } else {
+            response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+            response.end(JSON.stringify({ message: 'delete failed' }));
+        }*/
+        if (url == '/delete') {
+            let body = "";
+            request.on("data", (data) => {
+                body += data;
+            });
+            request.on('end', () => {
+                const postId = JSON.parse(body);    
+                const postIndex = posts.findIndex((post) => post.id === postId.id);
+                console.log("postIndex" + postIndex)
+
+            if(postIndex>-1){    //findIndex에서 조건에 만족하는 값을 찾지 못하면 -1로 전환함. 배열은 0부터 시작이기 때문에 조건문을 씀 
+                console.log(postIndex)
+                posts.splice(postIndex, 1);
+                response.writeHead(200, { "Content-Type": "application/json" });
+                response.end(JSON.stringify({ message: "delete succeess" }));
+               
+            } else {
+                console.log("1failed")
+                response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+                response.end(JSON.stringify({ message: 'delete failed' }));
+            }
+            }); // end of request.on('end', () => {...})
+
+        } else {
+            console.log("2failed")
+            response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+            response.end(JSON.stringify({ message: 'delete failed' }));
+        }
+    } 
 }
+
 
 
 
@@ -204,5 +250,3 @@ server.on("request", function (request, response) {
 server.listen(8000, '127.0.0.1', function () {  //8000 포트 요구 항상 대기중.....
     console.log('Listening to requests on port 8000');
 });
-
-
