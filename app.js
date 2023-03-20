@@ -19,7 +19,7 @@ const users = [ // 회원가입 할 유저들 로그인
     },
 ]
 
-let posts = [ //view object이니 데이터베이스에 저장 할 필요 없는 contents posts[i].id
+const posts = [ //view object이니 데이터베이스에 저장 할 필요 없는 contents
     {
         id: 1,
         title: "간단한 HTTP API 개발 시작!",
@@ -35,8 +35,10 @@ let posts = [ //view object이니 데이터베이스에 저장 할 필요 없는
 ] //유저에 대한 접근은 하나만 되어야함, userId === userId 유저마다 각각 컨
 
 
+
+
 const httpRequestListener = function (request, response) {
-    const { url, method } = request
+    const { url, method } = request;
     if (method === 'GET') {
         if (url === '/ping') {
             response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -51,11 +53,7 @@ const httpRequestListener = function (request, response) {
             response.writeHead(200, { "Content-Type": "application/json" });
             response.end(JSON.stringify({ posts: posts }));
         }
-        else if (url === "/patch") {
-            // [Get] 127.0.0.1:8080/patch
-            response.writeHead(200, { "Content-Type": "application/json" });
-            response.end(JSON.stringify({ posts: logins }));
-        }
+
         else if (url === "/contents") { //3번 과제 유저 id마다 user_id 키값이 일치하는 posts를 찾은 경우, 키값을 새로 변조해서 contents[]에 값 저장 
 
             const contents = [] //선언 위치는 중요함 .. 이건 저장을 할 필요가 없다 
@@ -79,13 +77,45 @@ const httpRequestListener = function (request, response) {
 
 
             response.writeHead(200, { "Content-Type": "application/json" });
-            console.log("==========================")
-            console.log(contents)
-            console.log("==========================")
             response.end(JSON.stringify({ contents: contents }));
 
-        }
+        } else if (url === '/user_posting') { // /list로 url이 시작 되는 경우  
+            let body = '';
+            request.on("data", (data) => {
+                body += data;
+            });
 
+            request.on('end', () => {
+                const userInfo = JSON.parse(body);
+                const user = users.find((user) => user.id === userInfo.userId); //userId와의 값이 일치하는 id 키값을 갖고 있는 users 내의 객체를 user에 저장 
+
+                if (user) { //user가 undefined가 아닌 경우, 즉 userId에 undefined로 반환되는 경우 
+                    const postings = posts
+                        .filter((post) => post.userId === user.id) //유저 아이디값이 일치하는 경우에
+                        .map((post) => ({  // posting[]{} => 객체를 원소로 갖는 배열 posting 
+                            postingId: post.id,
+                            postingName: post.title,
+                            postingContent: post.description
+                        }));
+
+                    postings.map(posting => console.log(posting)); //출력 확인
+                    //console.log(postings.length); // 1
+
+                    response.writeHead(200, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({
+                        data: {
+                            userId: user.id,
+                            userName: user.name,
+                            postings: postings // 개시글이 여러개라도 문자열 형태로 출력해줌 
+                        }
+                    }));
+                } else { //user가 undefined 인 경우 
+                    response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+                    response.end(JSON.stringify({ message: 'could not find lists' }));
+
+                }
+            });
+        }
     } else if (method === 'POST') { // (3)
         if (url === '/users') {
             let body = ''; // (4)
@@ -106,9 +136,9 @@ const httpRequestListener = function (request, response) {
                 response.writeHead(201, { "Content-Type": "application/json" });
                 response.end(JSON.stringify({ message: 'userCreated' }));
             });
-        }
-        // post 정보를 POST 
-        else if (url === '/posts') { //url이 posts로 들어가는 경우 
+
+
+        } else if (url === '/posts') { //url이 posts로 들어가는 경우 
             let body = ''; // (4)
             request.on('data', (data) => { body += data }) //데이터를 합쳐주는 과정 stream
             // stream을 전부 받아온 이후에 실행
@@ -122,13 +152,12 @@ const httpRequestListener = function (request, response) {
                         userId: post.userId
                     });
                 });
+
                 response.writeHead(201, { "Content-Type": "application/json" });
                 response.end(JSON.stringify({ message: 'postCreated' }));
             });
 
         }
-
-
     } else if (method === 'PATCH') { //put patch 
         if (url === '/patch') {
             let body = '';
@@ -138,111 +167,147 @@ const httpRequestListener = function (request, response) {
             request.on('end', () => {
                 const patchData = JSON.parse(body);
                 console.log(patchData)
-                const user = users.find(user => user.id === patchData.userId && user.password === patchData.userPwd); //map 
+                const user = users.find(user => user.id === patchData.userId && user.password === patchData.userPwd); //
                 for (let i = 0; i < users.length; i++) {
                     console.log(users[i])
                 }
-                console.log("==============")
-                console.log(user);  //undefined ????
-                console.log("==============")
-                if (user) { //user가 참일 경우, 즉 사용자가 인증이 될 경우 
+
+                if (user) { //user가 참일 경우, 즉 사용자가 인증이 될 경우, 일치하지 않을 경우 undefined로 표시되고 에러메세지로 감 
+
+
+                    //user 가 존재하지만 postId가 없을 경우 (그 글을 쓴 적이 없을 경우 )    
+                    const post = posts.find((post) => post.id === patchData.postingId);
 
                     //이 사람이 가진 글 번호랑 조회를 해야함
 
-                    // 입력 정보를 이용해  posts 배열 수정
-                    for (let i = 0; i < posts.length; i++) { //
-                        if (posts[i].id === patchData.postingId) {
-                            posts[i].title = patchData.postingTitle;
-                            posts[i].description = patchData.postingContent;
-
-                            break;
-                        }
-                    }
-                    const result = [];
-
-                    for (let i = 0; i < users.length; i++) {
-                        for (let j = 0; j < posts.length; j++) {
-                            if (users[i].id === posts[j].userId) {
-                                const content = {
-                                    userId: users[i].id,
-                                    usersName: users[i].name,
-                                    postingId: posts[j].id,
-                                    postingTitle: posts[j].title,
-                                    postingContent: posts[j].description,
-                                };
-                                result.push(content);
+                    if (post) {
+                        // 입력 정보를 이용해  posts 배열 수정
+                        for (let i = 0; i < posts.length; i++) { //
+                            if (posts[i].id === patchData.postingId) {
+                                posts[i].title = patchData.postingTitle; //그 사람이 쓴 글이 여러개일 수도 있으니 이 조건도 만족해야함. 
+                                posts[i].description = patchData.postingContent;
+                                break; //위 세 조건이 모두 실행될 경우 조건이 만족되는 요소는 하나밖에 없으니 바로 빠져나옴 
                             }
                         }
+                        const result = []; //결과물을 담을 배열, 첫번째 요소에 출력값이 들어갈것임 
+
+                        for (let i = 0; i < users.length; i++) {
+                            for (let j = 0; j < posts.length; j++) {
+                                if (users[i].id === posts[j].userId) {
+                                    const content = {
+                                        userId: users[i].id,
+                                        usersName: users[i].name,
+                                        postingId: posts[j].id,
+                                        postingTitle: posts[j].title,
+                                        postingContent: posts[j].description,
+                                    };
+                                    result.push(content);
+                                }
+                            }
+                        }
+                        const result_object = result[0];
+                        response.writeHead(200, { 'Content-Type': 'application/json' });
+                        response.end(JSON.stringify({ data: result_object }));
+
+                    } else { //post undefined, find함수에서 저장된 값이 없어서 찾지 못한 경우 
+                        response.writeHead(401, { 'Content-Type': 'application/json' });
+                        response.end(JSON.stringify({ message: 'patchFailed, could not find post' }));
                     }
-                    const result_object = result[0];
-                    response.writeHead(200, { 'Content-Type': 'application/json' });
-                    response.end(JSON.stringify({ data: result_object }));
-                } else {
-                    response.writeHead(401, { 'Content-Type': 'application/json' }); //유저 아이디와 비밀번호가 일치하지 않는 경우 
+
+                } else { //유저 아이디와 비밀번호가 일치하지 않는 경우 
+                    response.writeHead(401, { 'Content-Type': 'application/json' });
                     //401은 서버가 클라이언트 요청에 대한 인증을 거부했음을 나타내는 HTTP 상태 코드 중 하나입니다. 보통 사용자가 로그인하지 않은 경우나 인증 정보가 잘못된 경우에 사용됩니다.
-                    response.end(JSON.stringify({ message: 'failed' }));
+                    response.end(JSON.stringify({ message: 'patchFailed, could not find user' }));
                 }
             });
 
+        } else { // PATCH 메서드로 url을 요청하였는데 잘못 입력한 경우 
+            response.writeHead(404, { "Content-Type": "application/json" });
+            response.end(JSON.stringify({ message: 'patchFailed' }));
         }
     } else if (method === 'DELETE') {
-        /*
-        if (url.indexOf('/posts') === 0) { // /posts로 url이 시작 되는 경우  
-            const postId = parseInt(url.split("/")[2]);  //http://127.0.0.1:8000/posts/postId postId 값을 저장
-            const post = posts.find((post) => post.id === postId);
 
-
-            if (!post) { // 
-                response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
-                response.end(JSON.stringify({ message: 'delete failed' }));
-            } else {    // post 삭제 
-                posts = posts.filter((post) => post.id !== postId); //저장을 해야 기존 배열에서 해당 요소를 삭제한 배열이 됨 posts 배열을 const가 아니라 let으로 바꿨습니다
-
-                response.writeHead(200, { "Content-Type": "application/json" }); //204는 HTTP 상태 코드 중 "No Content"를 의미함. 요청이 성공적으로 수행되었지만, 반환할 컨텐츠가 없다는 뜻, 즉 메세지도 안보내짐
-                //이 경우는 메세지를 보내야 하니 http 상태 코드를 200으로 해야함 
-                response.end(JSON.stringify({ message: "posting deleted" }));
-            }
-        } else {
-            response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
-            response.end(JSON.stringify({ message: 'delete failed' }));
-        }*/
-        if (url == '/delete') {
+        if (url == '/delete') { //다 지우는 경우 
             let body = "";
             request.on("data", (data) => {
                 body += data;
             });
             request.on('end', () => {
-                const postId = JSON.parse(body);    
-                const postIndex = posts.findIndex((post) => post.id === postId.id);
-                console.log("postIndex" + postIndex)
+                const user = JSON.parse(body); //입력된 값 
 
-            if(postIndex>-1){    //findIndex에서 조건에 만족하는 값을 찾지 못하면 -1로 전환함. 배열은 0부터 시작이기 때문에 조건문을 씀 
-                console.log(postIndex)
-                posts.splice(postIndex, 1);
-                response.writeHead(200, { "Content-Type": "application/json" });
-                response.end(JSON.stringify({ message: "delete succeess" }));
-               
-            } else {
-                console.log("1failed")
-                response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
-                response.end(JSON.stringify({ message: 'delete failed' }));
-            }
-            }); // end of request.on('end', () => {...})
+                // user.id와 user.password가 일치하는 user[]의 인덱스를 찾음
+                const userIndex = users.findIndex((u) => u.id === user.id && u.password === user.password); //입력된값의 아이디와 비밀번호가 일치하는 유저 찾기
+                if (userIndex === -1) { // user가 없는 경우( find함수에 의해 userIndex의 값은 -1) 즉 아이디와 비번이 일치하지 않는 경우,  404 Not Found 응답 반환
+                    response.writeHead(404, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: 'delete failed' }));
+                    return;
+                }
+
+                // posts[] 내에서 userId가 user.id와 일치하는 객체들을 찾아 삭제
+                let deletedCount = 0; // 삭제된 post의 갯수 
+                for (let i = 0; i < posts.length; i++) { // posts 배열 내에서 찾기 
+                    if (posts[i].userId === user.id) { //위 조건에서 찾은 user의 아이디와 일치하는 경우 
+                        posts.splice(i, 1); //index=i 인 경우의 요소를 posts에서 삭제 
+                        deletedCount++; // 조건문이 실행된 경우 값이 증가 
+                    }
+                }
+
+                if (deletedCount > 0) { // posts[]에서 객체를 삭제한 경우, 하나 이상 삭제된 경우 deletedCount의 갯수가 최소 1 이상, 삭제되었다고 메세지 띄우기 
+                    response.writeHead(200, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: ` posts deleted` }));
+                } else { // posts[]에서 객체를 삭제하지 않은 경우 404 Not Found 응답 반환
+                    response.writeHead(404, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: 'delete failed' }));
+                }
+            });
+        } else if (url === '/deleteSpecific') { // 특정 유저의 특정 게시글만 삭제하고 싶은 경우 
+            let body = "";
+            request.on("data", (data) => {
+                body += data;
+            });
+            request.on('end', () => {
+                const user = JSON.parse(body); //입력된 값 
+
+                // user.id와 user.password가 일치하는 user[]의 인덱스를 찾음
+                const userIndex = users.findIndex((u) => u.id === user.id && u.password === user.password); //입력된값의 아이디와 비밀번호가 일치하는 유저 찾기
+                if (userIndex === -1) { // user가 없는 경우( find함수에 의해 userIndex의 값은 -1) 즉 아이디와 비번이 일치하지 않는 경우,  404 Not Found 응답 반환
+                    response.writeHead(404, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: 'delete failed' }));
+                    return;
+                }
+
+                // posts[] 내에서 userId가 user.id와 일치하는 객체들을 찾아 삭제
+                let remove_count = 0;
+
+                for (let i = 0; i < posts.length; i++) { // posts 배열 내에서 찾기 
+                    if (posts[i].userId === user.id) { //위 조건에서 찾은 user의 아이디와 일치하는 경우 
+                        remove_count++;
+                    }
+                }
+                // 아무것도 없을 경우 remove_count =0 
+                if (remove_count === 0) {
+                    response.writeHead(404, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: 'delete failed' }));
+                } else {
+                    const remove_index = posts.findIndex((u) => u.id === user.postingId)
+                    posts.splice(remove_index,1);
+
+                    response.writeHead(200, { "Content-Type": "application/json" });
+                    response.end(JSON.stringify({ message: ` posts deleted` }));
+                }
+            });
+
 
         } else {
-            console.log("2failed")
-            response.writeHead(404, { "Content-Type": "application/json" }); //404 not found
+            response.writeHead(404, { "Content-Type": "application/json" });
             response.end(JSON.stringify({ message: 'delete failed' }));
         }
-    } 
+    }
+
+
 }
-
-
-
-
 server.on("request", function (request, response) {
     httpRequestListener(request, response);
-
 });
 
 
