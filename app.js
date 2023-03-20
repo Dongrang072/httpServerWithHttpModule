@@ -3,10 +3,16 @@ const http = require('http'); // (1)
 const server = http.createServer();
 
 // GET /users 핸들러 함수
-const getUserHandler = function (request, response) {
+const getUserHandler1 = function (request, response) {
   if (request.method === "GET" && request.url === "/users") {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ users: users }));
+  }
+};
+const getUserHandler2 = function (request, response) {
+  if (request.method === "GET" && request.url === "/posts") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ posts: posts }));
   }
 };
 
@@ -39,7 +45,7 @@ const posts = [
     description: "Request/Response와 Stateless!!",
     userId: 2,
   },
-];
+]; //유저에 대한 접근은 하나만 되어야함, userId === userId 유저마다 각각 컨
 
 const httpRequestListener = function (request, response) {
   const { url, method } = request
@@ -48,8 +54,14 @@ const httpRequestListener = function (request, response) {
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({ message: 'pong' }));
     } else if (url === "/users") {
+
       response.writeHead(200, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ users: users }));
+    }
+    else if (url === "/posts") {
+
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ posts: posts }));
     }
   } else if (method === 'POST') { // (3)
     if (url === '/users') {
@@ -58,29 +70,55 @@ const httpRequestListener = function (request, response) {
       request.on('data', (data) => { body += data }) // (5)
 
       // stream을 전부 받아온 이후에 실행
-      request.on('end', () => {  // (6)
-        const user = JSON.parse(body); //(7) 
-
-        users.push({ // (8) 각각 밸류는 프론트에서 받아온걸로 넘김 
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          password: user.password
-        })
+      request.on('end', () => {
+        const usersArray = JSON.parse(body);
+        usersArray.forEach(user => {
+          users.push({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            password: user.password
+          });
+        });
         response.writeHead(201, { "Content-Type": "application/json" });
-        response.end(JSON.stringify({ message: 'userCreated' })); // (9)
-      })
+        response.end(JSON.stringify({ message: 'userCreated' }));
+      });
+    }
+    // post 정보를 POST 
+    else if (url === '/posts') { //url이 posts로 들어가는 경우 
+      let body2 = ''; // (4)
+
+      request.on('data', (data) => { body2 += data }) //데이터를 합쳐주는 과정 stream
+
+      // stream을 전부 받아온 이후에 실행
+      request.on('end', () => {
+        const postsArray = JSON.parse(body2);
+        postsArray.forEach(post => {
+          posts.push({
+            id: post.id,
+            title: post.title,
+            description: post.description,
+            userId: post.userId
+          });
+        });
+        response.writeHead(201, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ message: 'postCreated' }));
+      });
+
     }
   }
 };
 
 server.on("request", function (request, response) {
-  getUserHandler(request, response);
+  //getUserHandler1(request, response);
+  getUserHandler2(request, response);    //질문거리 왜 여기서는 handler 함수를 두번 쓰면 작동을 안할까? 핸들러 함수를 복합하여 중복을 최소화 
   httpRequestListener(request, response);
 });
 
 server.listen(8000, '127.0.0.1', function () {  //8000 포트 요구 항상 대기중.....
   console.log('Listening to requests on port 8000');
 });
+
+
 
 
